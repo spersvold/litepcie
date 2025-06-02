@@ -36,7 +36,7 @@ class S7PCIEHOST(LiteXModule):
     ):
         # Interfaces --------------------------------------------------------------------------------
         self.axi_ctl  = axi.AXILiteInterface(data_width=32, clock_domain=cd)
-        self.axi_mmio = axi.AXIInterface(data_width=data_width, id_width=id_width, clock_domain=cd)
+        self.axi_mmio = axi.AXIInterface(data_width=32, id_width=id_width, clock_domain=cd)
         self.axi_dma  = axi.AXIInterface(data_width=data_width, id_width=id_width, clock_domain=cd)
 
         # Parameters/Locals ------------------------------------------------------------------------
@@ -82,6 +82,10 @@ class S7PCIEHOST(LiteXModule):
 
         # Add "ev" object so we can use the normal interrupt allocation
         self.ev = InterruptPin()
+
+        # AXI Width conversion for MMIO  ---------------------------------------------------------------
+
+        axi_mmio64 = axi.AXIInterface(data_width=pcie_data_width, id_width=id_width, clock_domain="sys")
 
         # AXI Clock Domain Crossings -------------------------------------------------------------------
         axi_ctl_pcie  = axi.AXILiteInterface(data_width=32, clock_domain="pcie_ctl")
@@ -302,7 +306,7 @@ class S7PCIEHOST(LiteXModule):
             o_m_axi_rready                               = axi_ctl_pcie.r.ready,
         )
 
-        self.pcie_conv_mmio_params = dict(
+        self.pcie_conv_mmio64_params = dict(
             # AXI-S Interface ----------------------------------------------------------------------
             # Common
             i_s_axi_aclk                                 = ClockSignal("sys"),
@@ -356,6 +360,108 @@ class S7PCIEHOST(LiteXModule):
             o_s_axi_rlast                                = self.axi_mmio.r.last,
             o_s_axi_rvalid                               = self.axi_mmio.r.valid,
             i_s_axi_rready                               = self.axi_mmio.r.ready,
+
+            # AXI-M Interface ----------------------------------------------------------------------
+            # AW Channel
+            o_m_axi_awaddr                               = axi_mmio64.aw.addr,
+            o_m_axi_awlen                                = axi_mmio64.aw.len,
+            o_m_axi_awsize                               = axi_mmio64.aw.size,
+            o_m_axi_awburst                              = axi_mmio64.aw.burst,
+            o_m_axi_awlock                               = axi_mmio64.aw.lock,
+            o_m_axi_awcache                              = axi_mmio64.aw.cache,
+            o_m_axi_awprot                               = axi_mmio64.aw.prot,
+            o_m_axi_awregion                             = axi_mmio64.aw.region,
+            o_m_axi_awqos                                = axi_mmio64.aw.qos,
+            o_m_axi_awvalid                              = axi_mmio64.aw.valid,
+            i_m_axi_awready                              = axi_mmio64.aw.ready,
+
+            # W Channel
+            o_m_axi_wdata                                = axi_mmio64.w.data,
+            o_m_axi_wstrb                                = axi_mmio64.w.strb,
+            o_m_axi_wlast                                = axi_mmio64.w.last,
+            o_m_axi_wvalid                               = axi_mmio64.w.valid,
+            i_m_axi_wready                               = axi_mmio64.w.ready,
+
+            # B Channel
+            i_m_axi_bresp                                = axi_mmio64.b.resp,
+            i_m_axi_bvalid                               = axi_mmio64.b.valid,
+            o_m_axi_bready                               = axi_mmio64.b.ready,
+
+            # AR Channel
+            o_m_axi_araddr                               = axi_mmio64.ar.addr,
+            o_m_axi_arlen                                = axi_mmio64.ar.len,
+            o_m_axi_arsize                               = axi_mmio64.ar.size,
+            o_m_axi_arburst                              = axi_mmio64.ar.burst,
+            o_m_axi_arlock                               = axi_mmio64.ar.lock,
+            o_m_axi_arcache                              = axi_mmio64.ar.cache,
+            o_m_axi_arprot                               = axi_mmio64.ar.prot,
+            o_m_axi_arregion                             = axi_mmio64.ar.region,
+            o_m_axi_arqos                                = axi_mmio64.ar.qos,
+            o_m_axi_arvalid                              = axi_mmio64.ar.valid,
+            i_m_axi_arready                              = axi_mmio64.ar.ready,
+
+            # R Channel
+            i_m_axi_rdata                                = axi_mmio64.r.data,
+            i_m_axi_rresp                                = axi_mmio64.r.resp,
+            i_m_axi_rlast                                = axi_mmio64.r.last,
+            i_m_axi_rvalid                               = axi_mmio64.r.valid,
+            o_m_axi_rready                               = axi_mmio64.r.ready,
+        )
+
+        self.pcie_conv_mmio_params = dict(
+            # AXI-S Interface ----------------------------------------------------------------------
+            # Common
+            i_s_axi_aclk                                 = ClockSignal("sys"),
+            i_s_axi_aresetn                              = ~ResetSignal("sys"),
+
+            # AW Channel
+            i_s_axi_awid                                 = axi_mmio64.aw.id,
+            i_s_axi_awaddr                               = axi_mmio64.aw.addr,
+            i_s_axi_awlen                                = axi_mmio64.aw.len,
+            i_s_axi_awsize                               = axi_mmio64.aw.size,
+            i_s_axi_awburst                              = axi_mmio64.aw.burst,
+            i_s_axi_awlock                               = axi_mmio64.aw.lock,
+            i_s_axi_awcache                              = axi_mmio64.aw.cache,
+            i_s_axi_awprot                               = axi_mmio64.aw.prot,
+            i_s_axi_awregion                             = axi_mmio64.aw.region,
+            i_s_axi_awqos                                = axi_mmio64.aw.qos,
+            i_s_axi_awvalid                              = axi_mmio64.aw.valid,
+            o_s_axi_awready                              = axi_mmio64.aw.ready,
+
+            # W Channel
+            i_s_axi_wdata                                = axi_mmio64.w.data,
+            i_s_axi_wstrb                                = axi_mmio64.w.strb,
+            i_s_axi_wlast                                = axi_mmio64.w.last,
+            i_s_axi_wvalid                               = axi_mmio64.w.valid,
+            o_s_axi_wready                               = axi_mmio64.w.ready,
+
+            # B Channel
+            o_s_axi_bid                                  = axi_mmio64.b.id,
+            o_s_axi_bresp                                = axi_mmio64.b.resp,
+            o_s_axi_bvalid                               = axi_mmio64.b.valid,
+            i_s_axi_bready                               = axi_mmio64.b.ready,
+
+            # AR Channel
+            i_s_axi_arid                                 = axi_mmio64.ar.id,
+            i_s_axi_araddr                               = axi_mmio64.ar.addr,
+            i_s_axi_arlen                                = axi_mmio64.ar.len,
+            i_s_axi_arsize                               = axi_mmio64.ar.size,
+            i_s_axi_arburst                              = axi_mmio64.ar.burst,
+            i_s_axi_arlock                               = axi_mmio64.ar.lock,
+            i_s_axi_arcache                              = axi_mmio64.ar.cache,
+            i_s_axi_arprot                               = axi_mmio64.ar.prot,
+            i_s_axi_arregion                             = axi_mmio64.ar.region,
+            i_s_axi_arqos                                = axi_mmio64.ar.qos,
+            i_s_axi_arvalid                              = axi_mmio64.ar.valid,
+            o_s_axi_arready                              = axi_mmio64.ar.ready,
+
+            # R Channel
+            o_s_axi_rid                                  = axi_mmio64.r.id,
+            o_s_axi_rdata                                = axi_mmio64.r.data,
+            o_s_axi_rresp                                = axi_mmio64.r.resp,
+            o_s_axi_rlast                                = axi_mmio64.r.last,
+            o_s_axi_rvalid                               = axi_mmio64.r.valid,
+            i_s_axi_rready                               = axi_mmio64.r.ready,
 
             # AXI-M Interface ----------------------------------------------------------------------
             # Common
@@ -553,6 +659,15 @@ class S7PCIEHOST(LiteXModule):
                     "SYNCHRONIZATION_STAGES"      : 2,
                 },
             },
+            "conv_mmio64" : {
+                "ip_type" : "axi_dwidth_converter",
+                "config"  : {
+                    "PROTOCOL"                    : "AXI4",
+                    "MI_DATA_WIDTH"               : f"{self.pcie_data_width}",
+                    "SI_DATA_WIDTH"               : 32,
+                    "SI_ID_WIDTH"                 : f"{self.pcie_id_width}",
+                },
+            },
             "conv_mmio" : {
                 "ip_type" : "axi_clock_converter",
                 "config"  : {
@@ -626,6 +741,7 @@ class S7PCIEHOST(LiteXModule):
         self.add_sources(self.platform)
         self.specials += [
             Instance("pcie_conv_ctl_s7", **self.pcie_conv_ctl_params),
+            Instance("pcie_conv_mmio64_s7", **self.pcie_conv_mmio64_params),
             Instance("pcie_conv_mmio_s7", **self.pcie_conv_mmio_params),
             Instance("pcie_conv_dma_s7", **self.pcie_conv_dma_params),
             Instance("pcie_host_s7", **self.pcie_host_params),
